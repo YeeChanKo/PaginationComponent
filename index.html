@@ -1,0 +1,51 @@
+<!doctype html>
+
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <title>Page Navigation Component Test</title>
+    <link rel="stylesheet" href="node_modules/spectre.css/dist/spectre.min.css" />
+</head>
+
+<body>
+    <style>
+        body {
+            position: relative;
+            height: 100px;
+        }
+        
+        #wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+    </style>
+    <div id="wrapper">
+        <div id="content">
+            <ul>
+                <li></li>
+                <li></li>
+                <li></li>
+            </ul>
+        </div>
+        <ul class="pagination">
+            <li class="page-item"><a href="">Prev</a></li>
+            <li class="page-item active"><a href="">1</a></li>
+            <li class="page-item"><a href="">2</a></li>
+            <li class="page-item"><a href="">3</a></li>
+            <li class="page-item"><a href="">4</a></li>
+            <li class="page-item"><a href="">5</a></li>
+            <li class="page-item"><a href="">Next</a></li>
+        </ul>
+
+    </div>
+
+   <script src="node_modules/eventemitter/index.js"></script>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="index.html"></script>
+</body>
+
+</html>
