@@ -1,12 +1,12 @@
 {
   "name": "web-ui-adv-final",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "a simple pagination component",
+  "main": "js/pagination.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "viz",
   "license": "ISC",
   "dependencies": {
     "handlebars": "^4.0.10",
@@ -18,6 +18,8 @@
     "gulp": "^3.9.1",
     "gulp-concat": "^2.6.1",
     "gulp-eslint": "^3.0.1",
+    "gulp-rename": "^1.2.2",
+    "gulp-sequence": "^0.4.6",
     "gulp-uglify": "^3.0.0"
   }
 }

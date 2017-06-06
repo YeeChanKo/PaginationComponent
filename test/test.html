@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>QUnit Test</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-1.14.0.css">
+</head>
+
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <ul id="content">
+    <li></li>
+    <li></li>
+    <li></li>
+  </ul>
+  <ul class="pagination">
+    <li class="page-item viz-page-prev-group">
+      <a href="">
+        <<</a>
+    </li>
+    <li class="page-item viz-page-prev">
+      <a href="">
+        <</a>
+    </li>
+    <li class="page-item active"><a href="">1</a></li>
+    <li class="page-item"><a href="">2</a></li>
+    <li class="page-item"><a href="">3</a></li>
+    <li class="page-item"><a href="">4</a></li>
+    <li class="page-item"><a href="">5</a></li>
+    <li class="page-item viz-page-next"><a href="">></a></li>
+    <li class="page-item viz-page-next-group"><a href="">>></a></li>
+  </ul>
+  <script src="https://code.jquery.com/qunit/qunit-1.14.0.js"></script>
+  <script src="../node_modules/wolfy87-eventemitter/EventEmitter.min.js"></script>
+  <script src="../node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="../dist/all.min.js"></script>
+  <script src="test.js"></script>
+</body>
+
+</html>

@@ -4,7 +4,7 @@ $(function () {
   Handlebars.registerPartial("singleTodo", singleTodo);
   var multipleTodoTemplate = Handlebars.compile(multipleTodo);
 
-  var p = new VizPaginator(".pagination", "#content", {
+  var paginator = new VizPaginator(".pagination", "#content", {
     getTotalItemCount: {
       url: "http://128.199.76.9:8002/viz/todo/count",
       parser: function (data) {
@@ -29,4 +29,8 @@ $(function () {
     // maxItemCount: 3
     // maxPageCount: 3
   });
+
+  // paginator.on("move", function (obj) {
+  //   console.log(obj);
+  // });
 });

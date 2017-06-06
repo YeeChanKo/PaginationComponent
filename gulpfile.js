@@ -1,35 +1,35 @@
 var gulp = require("gulp");
+var concat = require("gulp-concat");
 var uglify = require("gulp-uglify");
 var rename = require("gulp-rename");
 var gulpSequence = require("gulp-sequence");
-var jscs = require("gulp-jscs");
-var browserify = require("browserify");
+var eslint = require("gulp-eslint");
 var fs = require("fs");
 
 var jsDir = "./js/*.js";
 
-gulp.task("default", gulpSequence("lint", "bundle", "compress"));
+gulp.task("default", gulpSequence("lint", "concat", "compress"));
 
-gulp.task("lint", () => {
+gulp.task("lint", function () {
   return gulp.src(jsDir)
-    .pipe(jscs())
-    .pipe(jscs.reporter());
+    .pipe(eslint())
+    .pipe(eslint.format())
+    .pipe(eslint.failAfterError());
 });
 
-gulp.task("bundle", () => {
-  return browserify("./js/app.js")
-    .transform("babelify", {
-      presets: ["es2015"]
-    })
-    .bundle()
-    .pipe(fs.createWriteStream("./dist/all.js"));
+gulp.task("concat", function () {
+  return gulp.src(jsDir)
+    .pipe(concat("all.js"))
+    .pipe(gulp.dest("./dist/"));
 });
 
-gulp.task("compress", () => {
+gulp.task("compress", function () {
   return gulp.src("./dist/all.js")
-    .pipe(uglify())
+    .pipe(uglify({
+      mangle: true // uglify params and vars
+    }))
     .pipe(rename({
-      suffix: ".uglify"
+      suffix: ".min"
     }))
     .pipe(gulp.dest("dist"));
 });
