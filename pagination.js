@@ -30,7 +30,7 @@ function VizPaginator(paginationSelector, contentSelector, settings) {
   this.init();
 }
 
-VizPaginator.prototype.createGetTotalItemCountAjax = function (url, baseUrl, parser, doneCb, failCb) {
+VizPaginator.prototype.createGetTotalItemCountAjax = function (url, baseUrl, parser, failCb) {
   return function () {
     $.ajax(url ? url : baseUrl + "/count").done(function (data) {
       this.totalItemCount = parser ? parser(data) : data.cnt;
