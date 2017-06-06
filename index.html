@@ -6,34 +6,31 @@
   <meta charset="utf-8">
   <title>Page Navigation Component Test</title>
   <link rel="stylesheet" href="node_modules/spectre.css/dist/spectre.min.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/index.css" />
+  <link rel="stylesheet" href="css/custom.css" />
 </head>
 
 <body>
-  <style>
-    body {
-      height: 100vh;
-    }
-
-    #wrapper {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    a:focus {
-      box-shadow: none;
-    }
-  </style>
   <div id="wrapper">
-    <ul id="content">
-      <li></li>
-      <li></li>
-      <li></li>
-    </ul>
+    <section class="todoapp">
+      <section class="main">
+        <ul id="content" class="todo-list">
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+      </section>
+    </section>
     <ul class="pagination">
-      <li class="page-item viz-page-prev-group"><a href=""><<</a></li>
-      <li class="page-item viz-page-prev"><a href=""><</a></li>
+      <li class="page-item viz-page-prev-group">
+        <a href="">
+          <<</a>
+      </li>
+      <li class="page-item viz-page-prev">
+        <a href="">
+          <</a>
+      </li>
       <li class="page-item active"><a href="">1</a></li>
       <li class="page-item"><a href="">2</a></li>
       <li class="page-item"><a href="">3</a></li>
@@ -42,13 +39,33 @@
       <li class="page-item viz-page-next"><a href="">></a></li>
       <li class="page-item viz-page-next-group"><a href="">>></a></li>
     </ul>
-
   </div>
 
+  <script id="single-todo" type="text/x-handlebars-template">
+    <li data-id='{{id}}' {{#if completed}}class='completed' {{/if}}>
+      <div class='view'>
+        <input class='toggle' type='checkbox' {{#if completed}}checked=completed {{/if}}>
+        <label>{{todo}}</label>
+        <button class='destroy'></button>
+      </div>
+      <input class='edit' value='{{todoValue}}'>
+    </li>
+  </script>
+
+  <script id="multiple-todo" type="text/x-handlebars-template">
+    {{#if todos}} {{#each todos}} {{>singleTodo}} {{/each}} {{else}}
+    <li>
+      <div class="view">
+        <label class="not-found">등록된 TODO가 없습니다</label>
+      </div>
+    </li>
+    {{/if}}
+  </script>
+
   <script src="node_modules/wolfy87-eventemitter/EventEmitter.min.js"></script>
+  <script src="node_modules/handlebars/dist/handlebars.min.js"></script>
   <script src="node_modules/jquery/dist/jquery.min.js"></script>
   <script src="pagination.js"></script>
-  <script src="content.js"></script>
   <script src="index.js"></script>
 </body>
 
