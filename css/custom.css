@@ -1,23 +1,32 @@
 body {
-	height: 100vh;
+  height: 100vh;
 }
 
 #wrapper {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 a:focus {
-	box-shadow: none;
+  box-shadow: none;
 }
 
 .todo-list li {
-	margin: 0;
-	height: 60px;
+  margin: 0;
+  height: 60px;
 }
 
 .todoapp {
-	margin: 0;
+  margin: 0;
+}
+
+li.viz-page-item.disabled {
+  opacity: 0.5;
+}
+
+li.viz-page-item.disabled a {
+  pointer-events: none;
+  cursor: default;
 }

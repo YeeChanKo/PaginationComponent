@@ -1,269 +1,176 @@
-function VizPaginator(paginationSelector, contentSelector, settings) {
-  this.ee = new EventEmitter();
-  this.memoMap = new Map(); // map for memoization
-
+function VizPaginator(paginationSelector, totalPages, pagesPerGroup) {
   this.$pagination = $(paginationSelector);
-  this.$content = $(contentSelector);
-
   this.$prevButton = $(this.$pagination.children(".viz-page-prev")[0]);
   this.$nextButton = $(this.$pagination.children(".viz-page-next")[0]);
   this.$prevGroupButton = $(this.$pagination.children(".viz-page-prev-group")[0]);
   this.$nextGroupButton = $(this.$pagination.children(".viz-page-next-group")[0]);
-  this.$pages = this.$pagination.children("li:not(.viz-page-prev):not(.viz-page-next)" +
-    ":not(.viz-page-prev-group):not(.viz-page-next-group)");
-
-  this.baseUrl = settings.baseUrl;
-  this.getTotalItemCountOpt = settings.getTotalItemCount;
-  this.getRangeOfItemsOpt = settings.getRangeOfItems;
-
-  // default values:
-  // maxItemCount - 3
-  // maxPageCount - 5
-  this.maxItemCount = settings.maxItemCount ? settings.maxItemCount : 3;
-  this.maxPageCount = settings.maxPageCount ? settings.maxPageCount : 5;
-
-  if (!(this.baseUrl || (this.getTotalItemCountOpt && this.getRangeOfItemsOpt))) {
-    throw "You should pass either baseUrl or (getTotalItemCountOpt and getRangeOfItemsOpt)!";
-  }
-
-  // set smart options for request urls
-  this.getTotalItemCountAjax = this.createGetTotalItemCountAjax(this.getTotalItemCountOpt.url,
-    this.baseUrl, this.getTotalItemCountOpt.parser, this.getTotalItemCountOpt.fail);
-  this.getRangeOfItemsAjax = this.createGetRangeOfItemsAjax(this.getRangeOfItemsOpt.url,
-    this.baseUrl, this.getRangeOfItemsOpt.parser, this.getRangeOfItemsOpt.done, this.getRangeOfItemsOpt.fail);
-
+  this.eventEmitter = new EventEmitter();
+  // TODO: 아예 settings로 받기, li도, totalGroups만 추가
+  this.settings = {
+    "totalPages": totalPages,
+    "pagesPerGroup": pagesPerGroup,
+    "totalGroups": Math.ceil(totalPages / pagesPerGroup)
+  };
   this.init();
 }
 
 VizPaginator.prototype.init = function () {
-  // set initial page group
-  this.currentPageGroup = 1;
+  // set initial page & group
+  this.status = {
+    "currentPage": 1,
+    "currentGroup": 1
+  };
 
   // set listeners
-  this.$pages.on("click", this.pageOnClickCallback.bind(this));
-  this.$prevButton.on("click", this.prevOnClickCallback.bind(this));
-  this.$nextButton.on("click", this.nextOnClickCallback.bind(this));
-  this.$prevGroupButton.on("click", this.prevGroupOnClickCallback.bind(this));
-  this.$nextGroupButton.on("click", this.nextGroupOnClickCallback.bind(this));
-  this.ee.addListener("move", this.pageChangedCallback.bind(this));
+  this.$pagination.on("click", ".viz-page-item", this.buttonClicked(function (e) {
+    this.changePage(Number($(e.target).text()));
+  }));
+  this.$pagination.on("click", ".viz-page-prev", this.buttonClicked(function () {
+    this.changePageRelatively(-1);
+  }));
+  this.$pagination.on("click", ".viz-page-next", this.buttonClicked(function () {
+    this.changePageRelatively(1);
+  }));
+  this.$pagination.on("click", ".viz-page-prev-group", this.buttonClicked(function () {
+    this.changePage((this.status.currentGroup - 2) * this.settings.pagesPerGroup + 1);
+  }));
+  this.$pagination.on("click", ".viz-page-next-group", this.buttonClicked(function () {
+    this.changePage(this.status.currentGroup * this.settings.pagesPerGroup + 1);
+  }));
 
-  // set total count & total page, disable extra pages & next button if needed
-  this.getTotalItemCountAjax();
-
-  // set current active, load initial data
-  this.changePage(1);
+  // set up pages
+  this.setupPages();
 };
 
-VizPaginator.prototype.createGetTotalItemCountAjax = function (url, baseUrl, parser, failCb) {
-  // default values:
-  // url - baseUrl + "/count"
-  // parser - data.count
-  // failCb - (see below)
+VizPaginator.prototype.setupPages = function () {
+  var liString = "<li class=\"viz-page-item\" style=\"{{css}}\"><a href>{{pageNumber}}</a></li>";
 
-  return function () {
-    $.ajax(url ? url : baseUrl + "/count").done(function (data) {
-      this.totalItemCount = parser ? parser(data) : data.count; // default
-      this.totalPageCount = Math.ceil(this.totalItemCount / this.maxItemCount);
+  var eleString = "";
+  for (var i = 0; i < this.settings.pagesPerGroup; i++) {
+    eleString += liString.replace("{{css}}", "").replace("{{pageNumber}}", i + 1);
+  }
+  for (var j = this.settings.pagesPerGroup; j < this.settings.totalPages; j++) {
+    eleString += liString.replace("{{css}}", "display:none").replace("{{pageNumber}}", j + 1);
+  }
 
-      // initial setting
-      this.enableOrDisablePageButtons();
-      if (this.totalPageCount === 1) {
-        this.disableButton(this.$nextButton);
-      }
-    }.bind(this)).fail(failCb ? failCb : function () {
-      alert("Server request failed!\nPlease check your network status and reload the page.");
-    });
-  }.bind(this);
+  // delete existing
+  this.$pagination.children(".viz-page-item").remove();
+  // add created
+  this.$prevButton.after(eleString);
+  // set pages reference
+  this.$pages = this.$pagination.children(".viz-page-item");
+  // set current page active
+  $(this.$pages[this.status.currentPage - 1]).addClass("active");
+  // set nav buttons status
+  this.setNavButtonStatus();
+  // emit move event
+  this.emitPageChangedEvent();
 };
 
-VizPaginator.prototype.createGetRangeOfItemsAjax = function (url, baseUrl, parser, doneCb, failCb) {
-  // default values:
-  // url - baseUrl + "/page?start={{0}}&limit={{1}}"
-  // parser - data[index].count
-  // doneCb - (see below)
-  // failCb - (see below)
-
-  this.getRangeOfItemsAjaxDoneCallback = doneCb ? doneCb : function (data) {
-    // set parser
-    var jsonParser = parser ? parser : function (data, index) {
-      return data[index].content;
-    };
-    // parse data and set text on list items
-    for (var i = 0; i < data.length; i++) {
-      this.$content.children("li:nth-child(" + (i + 1) + ")").text(jsonParser(data, i));
-    }
-    // empty extra list items
-    for (var j = data.length; j < this.maxItemCount; j++) {
-      this.$content.children("li:nth-child(" + (j + 1) + ")").text("");
+VizPaginator.prototype.buttonClicked = function (func) {
+  return function (e) {
+    e.preventDefault();
+    if (this.isButtonEnabled($(e.currentTarget))) {
+      func.bind(this)(e);
     }
   }.bind(this);
-
-  return function (start, limit, pageNumber) {
-    var urlSkeleton = url ? url : baseUrl + "/page?start={{0}}&limit={{1}}";
-    $.ajax(urlSkeleton.replace("{{0}}", start).replace("{{1}}", limit))
-      .done(function (data) {
-        this.memoMap.set(pageNumber, data); // save data into memoMap
-        this.getRangeOfItemsAjaxDoneCallback(data);
-      }.bind(this)).fail(failCb ? failCb : function () {
-        alert("Server request failed!\nPlease check your network status and reload the page.");
-      });
-  }.bind(this);
 };
 
-VizPaginator.prototype.disableButton = function ($li) {
-  $li.children("a").attr("disabled", "");
+VizPaginator.prototype.changePageRelatively = function (distance) {
+  this.changePage(this.status.currentPage + distance);
 };
 
-VizPaginator.prototype.enableButton = function ($li) {
-  $li.children("a").removeAttr("disabled");
+VizPaginator.prototype.changePage = function (pageNumber) {
+  // ignore when clicked on same page
+  if (pageNumber == this.status.currentPage) {
+    return;
+  }
+
+  // change page group if needed
+  var group = Math.ceil(pageNumber / this.settings.pagesPerGroup);
+  if (group != this.status.currentGroup) {
+    this.changePageGroup(group);
+  }
+
+  // save last active page reference, change current page
+  this.status.lastActivePage = this.status.currentPage;
+  this.status.currentPage = pageNumber;
+
+  // change active
+  $(this.$pages[this.status.lastActivePage - 1]).removeClass("active");
+  $(this.$pages[this.status.currentPage - 1]).addClass("active");
+
+  // set nav buttons status
+  this.setNavButtonStatus();
+
+  // emit move event
+  this.emitPageChangedEvent();
 };
 
-VizPaginator.prototype.isButtonEnabled = function ($li) {
-  return !$li.children("a").attr("disabled");
+VizPaginator.prototype.emitPageChangedEvent = function () {
+  this.eventEmitter.emit("pageChanged", {
+    index: this.status.currentPage,
+    max: this.settings.totalPages
+  });
 };
 
-VizPaginator.prototype.enableOrDisablePageButtons = function () {
-  var disableStartPoint = this.totalPageCount - (this.currentPageGroup - 1) * this.maxPageCount;
-  var disableStopPoint = this.maxPageCount * this.currentPageGroup;
+VizPaginator.prototype.changePageGroupRelatively = function (distance) {
+  this.changePageGroup(this.status.currentGroup + distance);
+};
 
-  if (disableStartPoint >= this.maxPageCount) {
-    for (var i = 0; i < this.maxPageCount; i++) {
-      this.enableButton($(this.$pages[i]));
-    }
-  } else {
-    for (var j = 0; j < disableStartPoint; j++) {
-      this.enableButton($(this.$pages[j]));
-    }
-    for (var k = disableStartPoint; k < disableStopPoint; k++) {
-      this.disableButton($(this.$pages[k]));
-    }
+VizPaginator.prototype.changePageGroup = function (group) {
+  this.status.lastActiveGroup = this.status.currentGroup;
+  this.status.currentGroup = group;
+  this.$pages.css("display", "none");
+  var first = (this.status.currentGroup - 1) * this.settings.pagesPerGroup + 1;
+  var last = this.status.currentGroup * this.settings.pagesPerGroup;
+  for (var i = first; i <= last; i++) {
+    $(this.$pages[i - 1]).css("display", "");
   }
 };
 
-VizPaginator.prototype.pageChangedCallback = function (obj) {
-  if (obj.index === 1) {
+VizPaginator.prototype.disableButton = function ($li) {
+  $li.addClass("disabled");
+};
+
+VizPaginator.prototype.enableButton = function ($li) {
+  $li.removeClass("disabled");
+};
+
+VizPaginator.prototype.isButtonEnabled = function ($li) {
+  return !$li.hasClass("disabled");
+};
+
+VizPaginator.prototype.setNavButtonStatus = function () {
+  if (this.status.currentPage === 1) {
     this.disableButton(this.$prevButton);
   } else {
     this.enableButton(this.$prevButton);
   }
 
-  if (obj.index - this.maxPageCount < 1) {
-    this.disableButton(this.$prevGroupButton);
-  } else {
-    this.enableButton(this.$prevGroupButton);
-  }
-
-  if (obj.index === this.totalPageCount) {
+  if (this.status.currentPage + 1 > this.settings.totalPages) {
     this.disableButton(this.$nextButton);
   } else {
     this.enableButton(this.$nextButton);
   }
 
-  if (obj.index + this.maxPageCount > this.totalPageCount) {
+  if (this.status.currentGroup === 1) {
+    this.disableButton(this.$prevGroupButton);
+  } else {
+    this.enableButton(this.$prevGroupButton);
+  }
+
+  if (this.status.currentGroup + 1 > this.settings.totalGroups) {
     this.disableButton(this.$nextGroupButton);
   } else {
     this.enableButton(this.$nextGroupButton);
   }
 };
 
-VizPaginator.prototype.pageOnClickCallback = function (e) {
-  e.preventDefault();
-  if (this.isButtonEnabled($(e.target))) {
-    var pageNumber = Number($(e.target).text());
-    this.changePage(pageNumber);
-  }
-};
-
-VizPaginator.prototype.prevOnClickCallback = function (e) {
-  e.preventDefault();
-  if (this.isButtonEnabled($(e.target))) {
-    this.changePageRelatively(-1);
-  }
-};
-
-VizPaginator.prototype.nextOnClickCallback = function (e) {
-  e.preventDefault();
-  if (this.isButtonEnabled($(e.target))) {
-    this.changePageRelatively(1);
-  }
-};
-
-VizPaginator.prototype.prevGroupOnClickCallback = function (e) {
-  e.preventDefault();
-  if (this.isButtonEnabled($(e.target))) {
-    this.changePageRelatively(-this.maxPageCount);
-  }
-};
-
-VizPaginator.prototype.nextGroupOnClickCallback = function (e) {
-  e.preventDefault();
-  if (this.isButtonEnabled($(e.target))) {
-    this.changePageRelatively(this.maxPageCount);
-  }
-};
-
-VizPaginator.prototype.changePageRelatively = function (distance) {
-  var currentPageNumber = Number(this.$currentActive.text());
-  var pageNumber = currentPageNumber + distance;
-  this.changePage(pageNumber);
-};
-
-VizPaginator.prototype.changePage = function (pageNumber) {
-  // change page group if needed
-  var firstPageNumber = $(this.$pages[0]).text();
-  var lastPageNumber = $(this.$pages[this.maxPageCount - 1]).text();
-
-  if (pageNumber < firstPageNumber) {
-    this.changePageGroup(-1);
-  } else if (pageNumber > lastPageNumber) {
-    this.changePageGroup(1);
-  }
-
-  // get data from memoMap
-  // request only when data does not exist
-  var data = this.memoMap.get(pageNumber);
-  if (data) {
-    this.getRangeOfItemsAjaxDoneCallback(data);
-  } else {
-    this.changeContent(pageNumber);
-  }
-
-  // change activated li
-  if (this.$currentActive) {
-    this.$currentActive.removeClass("active");
-  }
-  var targetPageIndex = pageNumber - this.maxPageCount * (this.currentPageGroup - 1) - 1;
-  this.$currentActive = $(this.$pages[targetPageIndex]);
-  this.$currentActive.addClass("active");
-
-  // emit move event
-  this.ee.emit("move", {
-    index: pageNumber,
-    max: this.totalPageCount
-  });
-};
-
-VizPaginator.prototype.changeContent = function (pageNumber) {
-  var start = (pageNumber - 1) * this.maxItemCount;
-  var limit = this.maxItemCount;
-
-  this.getRangeOfItemsAjax(start, limit, pageNumber);
-};
-
-VizPaginator.prototype.changePageGroup = function (distance) {
-  this.currentPageGroup += distance;
-  for (var i = 0; i < this.maxPageCount; i++) {
-    var $aTag = $(this.$pages[i]).children("a");
-    var pageNumber = Number($aTag.text()) + distance * this.maxPageCount;
-    $aTag.text(pageNumber);
-  }
-  this.enableOrDisablePageButtons();
-};
-
 VizPaginator.prototype.on = function (event, callback) {
-  this.ee.addListener(event, callback);
+  this.eventEmitter.addListener(event, callback);
 };
 
 VizPaginator.prototype.off = function (event, callback) {
-  this.ee.removeListener(event, callback);
+  this.eventEmitter.removeListener(event, callback);
 };
